@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Email App</title>
+</head>
+
+<body>
+
+<h2>Email List</h2>
+
+<input type="email" id="emailInput" placeholder="Enter Email">
+<button onclick="addEmail()">Add</button>
+
+<ul id="emailList"></ul>
+
+<script>
+
+const API="http://localhost:5000"
+
+async function addEmail(){
+
+    const email=document.getElementById("emailInput").value
+
+    const res = await fetch(API+"/add-email",{
+        method:"POST",
+        headers:{
+            "Content-Type":"application/json"
+        },
+        body:JSON.stringify({email})
+    })
+
+    const data = await res.json()
+
+    showEmails(data.emails)
+}
+
+function showEmails(emails){
+
+    const list=document.getElementById("emailList")
+
+    list.innerHTML=""
+
+    emails.forEach(email=>{
+        const li=document.createElement("li")
+        li.textContent=email
+        list.appendChild(li)
+    })
+}
+
+async function loadEmails(){
+
+    const res=await fetch(API+"/emails")
+
+    const data=await res.json()
+
+    showEmails(data)
+}
+
+loadEmails()
+
+</script>
+
+</body>
+</html>
