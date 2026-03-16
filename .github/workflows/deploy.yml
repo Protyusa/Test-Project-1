@@ -5,7 +5,6 @@ on:
 
 jobs:
   deploy:
-
     runs-on: ubuntu-latest
 
     steps:
@@ -23,8 +22,7 @@ jobs:
 
           cd /home/ec2-user
 
-          # clone repo first time
-          if [ ! -d "Test-Project" ]; then
+          if [ ! -d "Test-Project-1" ]; then
             git clone https://github.com/Protyusa/Test-Project-1.git
           fi
 
@@ -32,21 +30,6 @@ jobs:
 
           git pull origin main
 
-          # stop old containers
-          sudo docker stop frontend-container || true
-          sudo docker stop backend-container || true
+          sudo docker compose down
 
-          sudo docker rm frontend-container || true
-          sudo docker rm backend-container || true
-
-          # build backend
-          sudo docker build -t backend-app ./backend
-
-          # build frontend
-          sudo docker build -t frontend-app ./frontend
-
-          # run backend
-          sudo docker run -d -p 5000:5000 --name backend-container backend-app
-
-          # run frontend
-          sudo docker run -d -p 80:3000 --name frontend-container frontend-app
+          sudo docker compose up -d --build
