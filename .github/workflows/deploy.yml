@@ -19,17 +19,21 @@ jobs:
         port: 22
 
         script: |
-
-          cd /home/ec2-user
-
-          if [ ! -d "Test-Project-1" ]; then
-            git clone https://github.com/Protyusa/Test-Project-1.git
-          fi
-
-          cd Test-Project-1
+          cd /home/ec2-user/Test-Project-1
 
           git pull origin main
 
-          sudo docker-compose down
+          sudo docker stop frontend-container || true
+          
+          sudo docker stop backend-container || true
 
-          sudo docker-compose up -d --build
+          sudo docker rm frontend-container || true
+          sudo docker rm backend-container || true
+
+          # build images
+          sudo docker build -t backend-app ./Backend
+          sudo docker build -t frontend-app ./Frontend
+
+          # run containers
+          sudo docker run -d -p 5000:5000 --name backend-container backend-app
+          sudo docker run -d -p 80:3000 --name frontend-container frontend-app
