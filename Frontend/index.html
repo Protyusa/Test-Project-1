@@ -1,63 +1,50 @@
 <!DOCTYPE html>
 <html>
 <head>
-<title>Email App</title>
+  <title>Email App</title>
 </head>
-
 <body>
 
-<h2>Email List</h2>
+<h2>Email App</h2>
 
-<input type="email" id="emailInput" placeholder="Enter Email">
+<input type="email" id="email" placeholder="Enter email">
 <button onclick="addEmail()">Add</button>
 
-<ul id="emailList"></ul>
+<ul id="list"></ul>
 
 <script>
+  const API = "http://localhost:5000";
 
-const API="http://localhost:5000"
+  async function fetchEmails() {
+    const res = await fetch(API + "/emails");
+    const data = await res.json();
 
-async function addEmail(){
+    const list = document.getElementById("list");
+    list.innerHTML = "";
 
-    const email=document.getElementById("emailInput").value
+    data.forEach(email => {
+      const li = document.createElement("li");
+      li.innerText = email;
+      list.appendChild(li);
+    });
+  }
 
-    const res = await fetch(API+"/add-email",{
-        method:"POST",
-        headers:{
-            "Content-Type":"application/json"
-        },
-        body:JSON.stringify({email})
-    })
+  async function addEmail() {
+    const email = document.getElementById("email").value;
 
-    const data = await res.json()
+    await fetch(API + "/add-email", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({ email })
+    });
 
-    showEmails(data.emails)
-}
+    document.getElementById("email").value = "";
+    fetchEmails();
+  }
 
-function showEmails(emails){
-
-    const list=document.getElementById("emailList")
-
-    list.innerHTML=""
-
-    emails.forEach(email=>{
-        const li=document.createElement("li")
-        li.textContent=email
-        list.appendChild(li)
-    })
-}
-
-async function loadEmails(){
-
-    const res=await fetch(API+"/emails")
-
-    const data=await res.json()
-
-    showEmails(data)
-}
-
-loadEmails()
-
+  fetchEmails();
 </script>
 
 </body>
