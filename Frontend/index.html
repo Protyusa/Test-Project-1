@@ -2,13 +2,27 @@
 <html>
 <head>
   <title>Email App</title>
+
+  <style>
+    body {
+      background-color: red;
+      color: white; /* optional: text readable banane ke liye */
+      font-family: Arial;
+    }
+
+    input, button {
+      padding: 8px;
+      margin: 5px;
+    }
+  </style>
+
 </head>
 <body>
 
 <h2>Email App</h2>
 
 <input type="email" id="email" placeholder="Enter email">
-<button onclick="addEmail()">Add</button>
+<button onclick="addEmail()">Add</button>   
 
 <ul id="list"></ul>
 
