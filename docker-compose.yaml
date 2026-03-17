@@ -4,11 +4,14 @@ services:
     container_name: backend-container
     ports:
       - "5000:5000"
+    volumes:
+      - ./Backend:/app   # code mount
+      - /app/node_modules  # prevent overwrite
 
   frontend:
     build: ./Frontend
     container_name: frontend-container
     ports:
       - "80:80"
-    depends_on:
-      - backend
+    volumes:
+      - ./Frontend:/usr/share/nginx/html  # static files mount
