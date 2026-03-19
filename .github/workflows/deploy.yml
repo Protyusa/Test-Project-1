@@ -1,4 +1,4 @@
-name: Deploy to ECR + EC2
+name: Deploy to ECR + EC2 (With Rollback)
 
 on:
   workflow_dispatch:
@@ -27,7 +27,7 @@ jobs:
         aws ecr get-login-password --region us-east-1 \
         | docker login --username AWS --password-stdin 682366718561.dkr.ecr.us-east-1.amazonaws.com
 
-    # 4. Get Backend Version Tag
+    # 4. Backend Version Tag
     - name: Backend Version Tag
       run: |
         TAGS=$(aws ecr describe-images \
@@ -42,7 +42,7 @@ jobs:
           echo "BACKEND_TAG=latest" >> $GITHUB_ENV
         fi
 
-    # 5. Get Frontend Version Tag
+    # 5. Frontend Version Tag
     - name: Frontend Version Tag
       run: |
         TAGS=$(aws ecr describe-images \
@@ -69,20 +69,19 @@ jobs:
         docker tag backend-app:latest 682366718561.dkr.ecr.us-east-1.amazonaws.com/backend-app:$BACKEND_TAG
         docker tag frontend-app:latest 682366718561.dkr.ecr.us-east-1.amazonaws.com/frontend-app:$FRONTEND_TAG
 
-        # also tag latest
         docker tag backend-app:latest 682366718561.dkr.ecr.us-east-1.amazonaws.com/backend-app:latest
         docker tag frontend-app:latest 682366718561.dkr.ecr.us-east-1.amazonaws.com/frontend-app:latest
 
     # 8. Push Images
     - name: Push Images
       run: |
-        docker push 682366718561.dkr.ecr.us-east-1.amazonaws.com/backend-app:$BACKEND_TAG 
+        docker push 682366718561.dkr.ecr.us-east-1.amazonaws.com/backend-app:$BACKEND_TAG
         docker push 682366718561.dkr.ecr.us-east-1.amazonaws.com/backend-app:latest
 
         docker push 682366718561.dkr.ecr.us-east-1.amazonaws.com/frontend-app:$FRONTEND_TAG
         docker push 682366718561.dkr.ecr.us-east-1.amazonaws.com/frontend-app:latest
 
-    # 9. Deploy to EC2
+    # 9. Deploy with Rollback
     - name: Deploy to EC2
       uses: appleboy/ssh-action@v1.0.3
       with:
@@ -99,17 +98,54 @@ jobs:
           aws ecr get-login-password --region us-east-1 \
           | sudo docker login --username AWS --password-stdin 682366718561.dkr.ecr.us-east-1.amazonaws.com
 
-          sudo docker stop backend-container || true
-          sudo docker stop frontend-container || true
+          echo "🔍 Fetching previous version..."
 
+          TAGS=$(aws ecr describe-images \
+            --repository-name backend-app \
+            --query 'imageDetails[].imageTags[]' \
+            --output text | tr '\t' '\n' | grep latest | sort -V)
+
+          PREVIOUS_TAG=$(echo "$TAGS" | tail -n 2 | head -n 1)
+
+          echo "Previous: $PREVIOUS_TAG"
+
+          # Stop old containers
+          sudo docker stop backend-container || true
           sudo docker rm backend-container || true
+
+          sudo docker stop frontend-container || true
           sudo docker rm frontend-container || true
 
+          # Pull latest
           sudo docker pull 682366718561.dkr.ecr.us-east-1.amazonaws.com/backend-app:latest
           sudo docker pull 682366718561.dkr.ecr.us-east-1.amazonaws.com/frontend-app:latest
 
-          sudo docker run -d -p 5000:5000 --name backend-container \
+          echo "Starting backend (latest)"
+
+          sudo docker run -d -p 5000:5000 --restart always --name backend-container \
           682366718561.dkr.ecr.us-east-1.amazonaws.com/backend-app:latest
 
-          sudo docker run -d -p 80:80 --name frontend-container \
+          sleep 10
+
+          echo "🔍 Health check..."
+
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:5000/health)
+
+          echo "Status: $STATUS"
+
+          if [ "$STATUS" != "200" ]; then
+            echo "Failed → Rolling back..."
+
+            sudo docker stop backend-container
+            sudo docker rm backend-container
+
+            sudo docker run -d -p 5000:5000 --restart always --name backend-container \
+            682366718561.dkr.ecr.us-east-1.amazonaws.com/backend-app:$PREVIOUS_TAG
+          else
+            echo "Backend OK"
+          fi
+
+          echo "Starting frontend"
+
+          sudo docker run -d -p 80:80 --restart always --name frontend-container \
           682366718561.dkr.ecr.us-east-1.amazonaws.com/frontend-app:latest
