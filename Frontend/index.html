@@ -5,59 +5,110 @@
 
   <style>
     body {
-      background-color: white;
-      color: black; 
+      background-color: green;
+      color: white;
       font-family: Arial;
+      text-align: center;
     }
 
     input, button {
       padding: 8px;
       margin: 5px;
     }
-  </style>
 
+    ul {
+      list-style: none;
+      padding: 0;
+    }
+  </style>
 </head>
+
 <body>
 
 <h2>Email App</h2>
 
 <input type="email" id="email" placeholder="Enter email">
-<button onclick="addEmail()">Add</button>   
+<button onclick="addEmail()">Add</button>
+
+<p id="status"></p>
 
 <ul id="list"></ul>
 
 <script>
-   const PRIMARY_API = "http://44.212.49.241:5000";
-   const FALLBACK_API = "http://44.212.49.241:5001";
+  // 🔥 Primary & fallback API
+  const PRIMARY_API = "http://44.212.49.241:5000";
+  const FALLBACK_API = "http://44.212.49.241:5001";
 
-  
-    const data = await res.json();
+  let ACTIVE_API = PRIMARY_API;
 
-    const list = document.getElementById("list");
-    list.innerHTML = "";
-
-    data.forEach(email => {
-      const li = document.createElement("li");
-      li.innerText = email;
-      list.appendChild(li);
-    });
+  // 🔍 Function to test API
+  async function checkAPI(api) {
+    try {
+      const res = await fetch(api + "/emails");
+      if (res.ok) return true;
+    } catch (err) {
+      return false;
+    }
+    return false;
   }
 
+  // 🔁 Auto switch API (rollback logic)
+  async function setWorkingAPI() {
+    const primaryWorking = await checkAPI(PRIMARY_API);
+
+    if (primaryWorking) {
+      ACTIVE_API = PRIMARY_API;
+      document.getElementById("status").innerText = "Using Latest Version";
+    } else {
+      ACTIVE_API = FALLBACK_API;
+      document.getElementById("status").innerText = "Using Previous Version (Rollback)";
+    }
+  }
+
+  // 📥 Fetch emails
+  async function fetchEmails() {
+    await setWorkingAPI();
+
+    try {
+      const res = await fetch(ACTIVE_API + "/emails");
+      const data = await res.json();
+
+      const list = document.getElementById("list");
+      list.innerHTML = "";
+
+      data.forEach(email => {
+        const li = document.createElement("li");
+        li.innerText = email;
+        list.appendChild(li);
+      });
+
+    } catch (err) {
+      document.getElementById("status").innerText = "Error fetching data";
+    }
+  }
+
+  // ➕ Add email
   async function addEmail() {
     const email = document.getElementById("email").value;
 
-    await fetch(API + "/add-email", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({ email })
-    });
+    try {
+      await fetch(ACTIVE_API + "/add-email", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ email })
+      });
 
-    document.getElementById("email").value = "";
-    fetchEmails();
+      document.getElementById("email").value = "";
+      fetchEmails();
+
+    } catch (err) {
+      document.getElementById("status").innerText = "Error adding email";
+    }
   }
 
+  // 🚀 Initial load
   fetchEmails();
 </script>
 
