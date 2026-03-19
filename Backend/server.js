@@ -7,7 +7,7 @@ app.use(express.json());
 
 let emails = [];
 
-// 🔥 Health Check (IMPORTANT for rollback)
+// Health Check (IMPORTANT for rollback)
 app.get("/health", (req, res) => {
   res.status(200).send("OK");
 });
